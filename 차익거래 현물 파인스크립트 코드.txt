@@ -1,0 +1,74 @@
+//@version=6
+strategy("아비트라지 현물", overlay=true, process_orders_on_close = true, initial_capital = 1000, commission_value = 0.05)
+
+
+
+
+btcSpotPrice = request.security("OKX:BTCUSDT", input.timeframe('D'), close)
+btcFuturesPrice = request.security("BINANCE:BTCUSDT.P", input.timeframe('D'), close)
+
+
+
+var float entrySpot = na
+var float entryFutures = na
+var float profit = na
+var float exitSpot = na
+var float exitFutures = na
+var float positionSize = na
+
+
+spread = btcFuturesPrice - btcSpotPrice
+
+
+// Store exit prices when position is closed
+if (strategy.position_size > 0 and spread < 0)
+    exitSpot := btcSpotPrice  // Store the daily close price at the time of exit
+    exitFutures := btcFuturesPrice  // Store the daily close price at the time of exit
+   
+if (strategy.position_size < 0 and spread > 0)
+    exitSpot := btcSpotPrice  // Store the daily close price at the time of exit
+    exitFutures := btcFuturesPrice  // Store the daily close price at the time of exit    
+
+
+// log.info("positionSizeAndCommition:{0}", positionSizeAndCommition)
+
+longCondition = spread > 0
+if (strategy.position_size == 0 and longCondition)
+    strategy.entry("longPosition", strategy.long)
+    entrySpot := btcSpotPrice
+    entryFutures := btcFuturesPrice
+    positionSize := 1000 / entrySpot
+
+log.info("entrySpot:{0}", entrySpot)
+log.info("entryFutures:{0}", entryFutures)
+
+positionSizeAndCommition = positionSize * 0.002
+
+
+//btcSpotPrice, btcFuturesPrice 두 개 값이 현재 가격이 아닌 다른 가격 반영
+
+// profit = (entrySpot - entryFutures) + (exitSpot - exitFutures) > 0
+// log.info("exitSpot:{0}", exitSpot)
+// log.info("exitFutures:{0}", exitFutures)
+
+profit :=((exitSpot - entrySpot) + (entryFutures - exitFutures))  - ((entrySpot * 0.0015) + (entryFutures * 0.0015))
+// profit :=(exitSpot - entrySpot) + (entryFutures - exitFutures)
+log.info("profit:{0}", profit)
+closeCondition = spread < 0 and profit > 0 
+if (strategy.position_size > 0 and closeCondition)
+    strategy.close("longPosition", "롱 포지션 종료")
+
+
+
+shortCondition = spread < 0
+if (strategy.position_size == 0 and shortCondition)
+    strategy.entry("shortPosition", strategy.short)
+    entrySpot := btcSpotPrice
+    entryFutures := btcFuturesPrice
+    positionSize := 1000 / entrySpot
+
+profit :=((entrySpot - exitSpot) + (exitFutures - entryFutures))  - ((entrySpot * 0.0015) + (entryFutures * 0.0015))
+
+closeShortCondition = spread > 0 and profit > 0 
+if (strategy.position_size < 0 and closeShortCondition)
+    strategy.close("shortPosition", "숏 포지션 종료")
